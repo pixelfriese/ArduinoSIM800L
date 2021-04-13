@@ -3,7 +3,7 @@
  * A library for SeeedStudio seeeduino GPRS shield
  *
  * Original work Copyright (c) 2013 seeed technology inc. [lawliet zou]
- * Modified work Copyright 2019 Antonio Carrasco
+ * Modified work Copyright 2021 Antonio Carrasco
  *
  * The MIT License (MIT)
  *
@@ -27,11 +27,14 @@
  */
 
 #include "Sim800.h"
-
+// In power down the current is 60uA
+const char POWER_DOWN[] PROGMEM = "AT+CPOWD=1\r\n";
 const char SLEEP_MODE_2[] PROGMEM = "AT+CSCLK=2\r\n";
 const char SLEEP_MODE_1[] PROGMEM = "AT+CSCLK=1\r\n";
 const char SLEEP_MODE_0[] PROGMEM = "AT+CSCLK=0\r\n";
-const char OK[] PROGMEM = "OK";
+const char AT_OK[] PROGMEM = "OK";
+const char POWER_DOWN_OK[] PROGMEM = "DOWN\r\n";
+const char AT[] PROGMEM = "AT\r\n";
 
 int SIM800::preInit(void)
 {
@@ -47,6 +50,8 @@ int SIM800::preInit(void)
     purgeSerial();
     serialSIM800.flush();
 
+    sendATTest();
+
     return TRUE;
 }
 
@@ -58,8 +63,7 @@ int SIM800::checkReadable(void)
 int SIM800::readBuffer(char *buffer, int count, unsigned int timeOut)
 {
     int i = 0;
-    unsigned long timerStart, timerEnd;
-    timerStart = millis();
+    unsigned long timerStart = millis();
     while (1)
     {
         while (serialSIM800.available())
@@ -73,7 +77,8 @@ int SIM800::readBuffer(char *buffer, int count, unsigned int timeOut)
         }
         if (i > count - 1)
             break;
-        timerEnd = millis();
+
+        unsigned long timerEnd = millis();
         if (timerEnd - timerStart > timeOut)
         {
             break;
@@ -95,18 +100,18 @@ void SIM800::cleanBuffer(char *buffer, int count)
     }
 }
 
-void SIM800::sendCmd(const char *cmd)
+void SIM800::sendCmd(const char *cmd, unsigned int delayBeforeSend)
 {
     serialSIM800.listen();
     serialSIM800.flush();
-    delay(500);
+    delay(delayBeforeSend);
     write(cmd);
     serialSIM800.flush();
 }
 
 int SIM800::sendATTest(void)
 {
-    int ret = sendCmdAndWaitForResp("AT\r\n", "OK", DEFAULT_TIMEOUT);
+    int ret = sendCmdAndWaitForResp_P(AT, AT_OK, DEFAULT_TIMEOUT);
     return ret;
 }
 
@@ -114,8 +119,7 @@ int SIM800::waitForResp(const char *resp, unsigned int timeout)
 {
     int len = strlen(resp);
     int sum = 0;
-    unsigned long timerStart, timerEnd;
-    timerStart = millis();
+    unsigned long timerStart = millis();
 
     while (1)
     {
@@ -131,7 +135,7 @@ int SIM800::waitForResp(const char *resp, unsigned int timeout)
             if (sum == len)
                 break;
         }
-        timerEnd = millis();
+        unsigned long timerEnd = millis();
         if (timerEnd - timerStart > timeout)
         {
             return FALSE;
@@ -200,16 +204,21 @@ void SIM800::write(const char *data, unsigned int size)
     serialSIM800.write(data, size);
 }
 
-void SIM800::sleep(bool force)
+int SIM800::sleep(bool force)
 {
     if (force)
     {
-        sendCmdAndWaitForResp_P(SLEEP_MODE_1, OK, 2000);
+        return sendCmdAndWaitForResp_P(SLEEP_MODE_1, AT_OK, 2000);
     }
     else
     {
-        sendCmdAndWaitForResp_P(SLEEP_MODE_2, OK, 2000);
+        return sendCmdAndWaitForResp_P(SLEEP_MODE_2, AT_OK, 2000);
     }
+}
+
+int SIM800::powerDown()
+{
+    return sendCmdAndWaitForResp_P(POWER_DOWN, POWER_DOWN_OK, 2000);
 }
 
 void SIM800::wakeUp()

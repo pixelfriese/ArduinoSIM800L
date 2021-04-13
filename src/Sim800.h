@@ -3,7 +3,7 @@
  * A library for SeeedStudio seeeduino GPRS shield
  *
  * Original work Copyright (c) 2013 seeed technology inc. [lawliet zou]
- * Modified work Copyright 2018 Antonio Carrasco
+ * Modified work Copyright 2021 Antonio Carrasco
  *
  * The MIT License (MIT)
  *
@@ -37,7 +37,7 @@
 #define DEFAULT_TIMEOUT 5000
 
 // Comment or uncomment this to debug the library
-#define DEBUG true
+// #define DEBUG true
 
 /** SIM800 class.
  *  Used for SIM800 communication. attention that SIM800 module communicate with MCU in serial protocol
@@ -87,8 +87,9 @@ public:
 
     /** send AT command to SIM800 module
      *  @param cmd  command array which will be send to GPRS module
+     *  @param delayBeforeSend  integer indicating the sime to wait before sending a command
      */
-    void sendCmd(const char *cmd);
+    void sendCmd(const char *cmd, unsigned int delayBeforeSend = 10);
 
     /**send "AT" to SIM800 module
      */
@@ -134,7 +135,8 @@ public:
     void write(const char *data);
     void write(const char *data, unsigned int size);
 
-    void sleep(bool force = FALSE);
+    int sleep(bool force = FALSE);
+    int powerDown();
     void wakeUp();
 
 protected:
